@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Dashboard</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .attended { color: green; font-weight: bold; }
+    .not-attended { color: red; }
+    #controls { margin-top: 10px; }
+  </style>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <h1>Admin Dashboard – Attendance</h1>
+
+  <div id="controls">
+    <button onclick="loadAttendees()">Refresh Now</button>
+    <button onclick="downloadExcel()">Download to Excel</button>
+  </div>
+
+  <table id="attendeesTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Reg ID</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let attendeesData = [];
+
+    async function loadAttendees() {
+      try {
+        const resp = await fetch('/api/attendees');
+        const attendees = await resp.json();
+        attendeesData = attendees;
+
+        const tbody = document.querySelector('#attendeesTable tbody');
+        tbody.innerHTML = '';
+
+        attendees.forEach(a => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${a.name}</td>
+            <td>${a.email}</td>
+            <td>${a.reg_id}</td>
+            <td class="${a.attended ? 'attended' : 'not-attended'}">
+              ${a.attended ? 'Present' : 'Not Present'}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function downloadExcel() {
+      // Transform data into a 2D array
+      const data = [
+        ['Name', 'Email', 'Reg ID', 'Status'],
+        ...attendeesData.map(a => [
+          a.name,
+          a.email,
+          a.reg_id,
+          a.attended ? 'Present' : 'Not Present'
+        ])
+      ];
+
+      // Convert to SheetJS workbook
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+
+      // Trigger download
+      XLSX.writeFile(wb, 'attendance.xlsx');
+    }
+
+    // load initially
+    loadAttendees();
+    // refresh every 5 seconds
+    setInterval(loadAttendees, 5000);
+  </script>
+</body>
+</html>

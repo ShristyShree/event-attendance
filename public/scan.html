@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Scan to Mark Attendance</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <h1>Scan QR to Mark Attendance</h1>
+  <div id="reader" style="width:500px;"></div>
+  <div id="message"></div>
+
+  <script>
+    const messageEl = document.getElementById('message');
+
+    function showMsg(text, ok = true) {
+      messageEl.textContent = text;
+      messageEl.style.color = ok ? 'green' : 'red';
+    }
+
+    const html5QrcodeScanner = new Html5Qrcode("reader");
+
+    const qrSuccess = async (decodedText, decodedResult) => {
+      let reg_id = null;
+
+      // Try to parse JSON first
+      try {
+        const payload = JSON.parse(decodedText);
+        if (payload.reg_id) reg_id = payload.reg_id;
+      } catch (e) {
+        // Not JSON, maybe plain reg_id
+        reg_id = decodedText.trim();
+      }
+
+      if (!reg_id) {
+        showMsg('Invalid QR payload', false);
+        return;
+      }
+
+      // send to server
+      try {
+        const resp = await fetch('/api/mark', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reg_id })
+        });
+        const r = await resp.json();
+        if (r.success) {
+          showMsg(`Welcome ${r.record.name}! Attendance recorded.`);
+        } else {
+          showMsg(r.error || 'Failed to mark attendance', false);
+        }
+      } catch (err) {
+        showMsg('Server error: ' + err, false);
+      }
+
+      // pause briefly to avoid double scan
+      await html5QrcodeScanner.pause();
+      setTimeout(() => html5QrcodeScanner.resume(), 1500);
+    };
+
+    const config = { fps: 10, qrbox: 250 };
+
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length) {
+        html5QrcodeScanner.start(
+          { facingMode: "environment" },
+          config,
+          qrSuccess
+        ).catch(err => {
+          showMsg("Camera start error: " + err, false);
+        });
+      } else {
+        showMsg('No cameras found', false);
+      }
+    }).catch(err => {
+      showMsg('Camera init error: ' + err, false);
+    });
+  </script>
+</body>
+</html>
