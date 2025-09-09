@@ -2,10 +2,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const QRCode = require('qrcode');   // <— make sure this line is here
+const QRCode = require('qrcode'); // Make sure qrcode is installed
 
 const app = express();
-const PORT = 3000;
+
+// ✅ use the port Vercel/other host gives, or 3000 locally
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -25,11 +27,15 @@ app.post('/api/register', async (req, res) => {
 
   // Payload for QR code
   const payload = JSON.stringify({ reg_id: record.reg_id });
-  const qrDataUrl = await QRCode.toDataURL(payload);
-
-  res.json({ success: true, record, qr: qrDataUrl });
+  try {
+    const qrDataUrl = await QRCode.toDataURL(payload);
+    res.json({ success: true, record, qr: qrDataUrl });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'QR code generation failed' });
+  }
 });
 
+// Mark attendance
 app.post('/api/mark', (req, res) => {
   const { reg_id } = req.body;
   if (!reg_id) return res.json({ success: false, error: 'reg_id missing' });
@@ -41,12 +47,17 @@ app.post('/api/mark', (req, res) => {
   res.json({ success: true, record });
 });
 
+// Get all attendees
 app.get('/api/attendees', (req, res) => {
   res.json(attendees);
 });
 
+// Serve main page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// ✅ Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
