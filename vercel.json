@@ -1,32 +1,11 @@
 {
   "version": 2,
-  "public": true,
   "builds": [
-    {
-      "src": "api/attendance.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**/*",
-      "use": "@vercel/static"
-    }
+    { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    {
-      "src": "/api/register",
-      "dest": "/api/attendance.js?action=register"
-    },
-    {
-      "src": "/api/mark",
-      "dest": "/api/attendance.js?action=mark"
-    },
-    {
-      "src": "/api/attendees",
-      "dest": "/api/attendance.js?action=list"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
